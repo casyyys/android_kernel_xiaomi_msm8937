@@ -20,8 +20,8 @@ jobs:
       - run:
           name: Clone Kernel Sources
           command: |
-            git clone https://github.com/casyyys/android_kernel_xiaomi_msm8937.git -b main ulysse --depth=5
-            git clone https://github.com/casyyys/android_kernel_xiaomi_msm8937.git -b anykernel3 AK3 --depth=1
+            git clone https://github.com/Kaioxen/Kaioken-Kernel.git -b main ulysse --depth=5
+            git clone https://github.com/Kaioxen/Kaioken-Kernel.git -b anykernel3 AK3 --depth=1
             git clone https://github.com/kdrag0n/proton-clang proton-clang --depth=1
             mkdir -p upload
 
