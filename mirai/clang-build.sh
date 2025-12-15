@@ -1,31 +1,24 @@
 #!/bin/bash
 
-# ./build.sh -c <chat_id> -t <bot_token> -d <defconfig_used> -p <compiler_binary_path> -v <mirai_version> -n <circleci build num>
-while getopts c:t:d:p:v:n: flag
+# ./build.sh -d <defconfig_used> -p <compiler_binary_path> -v <kaioken_version>
+while getopts d:p:v: flag
 do
     case "${flag}" in
-        c) chat=${OPTARG};;
-        t) tokentg=${OPTARG};;
         d) defconfigs=${OPTARG};;
         p) compiler=${OPTARG};;
         v) version=${OPTARG};;
-        n) circlenum=${OPTARG};;
     esac
 done
 
 KERNEL_DIR=$(pwd)
-CHAT_ID=$chat
-TOKEN=$tokentg
-PARSE_MODE=Markdown
-
-MIRAI_VERSION=$version
-BUILD_USER=ckagenou
-BUILD_HOST=scavenger
+KAIOKEN_VERSION=$version
+BUILD_USER=Kaioxen
+BUILD_HOST=CircleCI
 DEFCONFIG=$defconfigs
 TOOLCHAIN_PATH_CLANG=$compiler
 
 KERNEL_BUILD_VERSION=1
-ZIP_NAME="Mirai-Kernel-${MIRAI_VERSION}-k4.9-$(date +%d%m)-$(date +%H%M)-ulysse.zip"
+ZIP_NAME="Kaioken-Kernel-${KAIOKEN_VERSION}-k4.9-$(date +%d%m)-$(date +%H%M)-ulysse.zip"
 
 # Color
 RED='\033[0;31m'
@@ -34,7 +27,7 @@ GREEN='\033[0;32m'
 NOCOL='\033[0m'
 
 clang_build() {
-    sendMessage "#$circlenum Mirai Build Started!"
+    echo "#${CIRCLE_BUILD_NUM:-1} Kaioken Build Started!"
     make PATH=${TOOLCHAIN_PATH_CLANG}:${PATH} -j12 \
     ARCH=arm64 \
     O=out \
@@ -48,19 +41,6 @@ clang_build() {
     STRIP=llvm-strip
 }
 
-sendMessage() {
-    # sendMessage <TEXT>
-    MESSAGE=$1
-    curl -s "https://api.telegram.org/bot${TOKEN}/sendMessage" -F chat_id=${CHAT_ID}  -F "text=${MESSAGE}" -F parse_mode=${PARSE_MODE}
-}
-
-sendDocument() {
-    # sendDocument <@file_name or file_id> <caption>
-    FILE=$1
-    CAPTION=$2
-    curl -s "https://api.telegram.org/bot${TOKEN}/sendDocument" -F chat_id=${CHAT_ID} -F document=${FILE} -F "caption=${CAPTION}" -F parse_mode=${PARSE_MODE}
-}
-
 export KBUILD_BUILD_USER=${BUILD_USER}
 export KBUILD_BUILD_HOST=${BUILD_HOST}
 export KERNEL_BUILD_VERSION=$KERNEL_BUILD_VERSION
@@ -72,8 +52,8 @@ make ARCH=arm64 O=out $DEFCONFIG
 clang_build
 if [ $? -ne 0 ]; then
     echo "Build failed"
-    sendMessage "Mirai Kernel Build Failed!"
-    return 1
+    echo "Kaioken Kernel Build Failed!"
+    exit 1
 else
     date2=$(date +"%s")
     diff=$(($date2-$date1))
@@ -85,18 +65,23 @@ else
         pushd ../AK3
         zip -r9 ../upload/${ZIP_NAME} ./* -x *.zip*
         popd
-        sendDocument @../upload/${ZIP_NAME} "#$circlenum *Mirai Kernel Build completed in *: \`$((($diff % 3600) / 60)) minutes $(($diff % 60)) seconds\` using \`ulysse_defconfig\` at latest commit :
-\`$commit\`.
-
-*Kernel ver *: \`$kernel_ver\`" > /dev/null
-        sendDocument @out/arch/arm64/boot/Image.gz-dtb > /dev/null
         echo " "
-        echo "Upload Success"
-        rm ../upload/${ZIP_NAME} -rf
-        echo "zip cleaned"
-        return 0
+        echo "Upload Success - Artifact stored at ../upload/${ZIP_NAME}"
+        echo "Build Details:"
+        echo "====================================="
+        echo "Kernel: Kaioken Kernel"
+        echo "Version: ${KAIOKEN_VERSION}"
+        echo "Build Number: ${CIRCLE_BUILD_NUM:-1}"
+        echo "Build Time: $((($diff % 3600) / 60)) minutes $(($diff % 60)) seconds"
+        echo "Kernel Version: $kernel_ver"
+        echo "Latest Commit: $commit"
+        echo "Defconfig: $DEFCONFIG"
+        echo "Builder: $BUILD_USER"
+        echo "====================================="
+        exit 0
     fi
-
 fi
 
 echo " "
+echo "Build completed with warnings"
+exit 0
