@@ -1,42 +1,53 @@
 version: 2.1
+
 jobs:
   compile:
-   docker:
+    docker:
       - image: ubuntu:18.04
-   environment:
-      GIT_EMAIL: 'ckagenou@outlook.com'
-      GIT_NAME: 'ckagenou'
+    environment:
+      GIT_EMAIL: 'hermawanwildan78@gmail.com'
+      GIT_NAME: 'Kaioxen'
       DEFCONFIG: 'ulysse_defconfig'
-      MIRAI_VERSION: 'V3'
-   steps:
+      KAIOKEN_VERSION: 'V1'
+    steps:
+      - checkout
+      
       - run:
-          name: Downloading deps...
+          name: Setup Environment
           command: |
-           apt-get -y update && apt-get -y upgrade && apt-get -y install python3-setuptools python3-pip python3 python bc bison build-essential curl flex g++-multilib gcc gcc-multilib clang git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-dev libxml2 libxml2-utils lzop pngcrush schedtool squashfs-tools xsltproc zip zlib1g-dev unzip openjdk-8-jdk python ccache libtinfo5 repo libstdc++6 wget libssl-dev rsync golang-go
-           git clone https://github.com/ckagenou/android_kernel_xiaomi_msm8937 ulysse --depth=5
-           git clone https://github.com/ckagenou/android_kernel_xiaomi_msm8937 -b anykernel3 AK3 --depth=1
-           git clone https://github.com/kdrag0n/proton-clang proton-clang --depth=1
-           mkdir upload
-           cd ulysse
-           ls -la $(pwd)
-           ls -la $(pwd)/../
-           echo $(pwd)
-           chmod +x mirai/clang-build.sh
-      - run:
-          name: Building...
-          command: |
-            echo $(pwd)
-            cd ulysse
-            bash mirai/clang-build.sh -c $CHAT_ID -t $TG_TOKEN -d $DEFCONFIG -p "/root/project/proton-clang/bin" -v $MIRAI_VERSION -n $CIRCLE_BUILD_NUM
+            apt-get -y update && apt-get -y upgrade && apt-get -y install python3-setuptools python3-pip python3 python bc bison build-essential curl flex g++-multilib gcc gcc-multilib clang git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-dev libxml2 libxml2-utils lzop pngcrush schedtool squashfs-tools xsltproc zip zlib1g-dev unzip openjdk-8-jdk python ccache libtinfo5 repo libstdc++6 wget libssl-dev rsync golang-go
 
       - run:
-           name: Run on fail status
-           command: |
-              echo "Build Failed!"
-           when: on_fail
+          name: Clone Kernel Source
+          command: |
+            git clone https://github.com/casyyys/android_kernel_xiaomi_msm8937.git -b main ulysse --depth=5
+            git clone https://github.com/casyyys/android_kernel_xiaomi_msm8937.git -b anykernel3 AK3 --depth=1
+            git clone https://github.com/kdrag0n/proton-clang proton-clang --depth=1
+            mkdir -p upload
+
+      - run:
+          name: Building Kernel
+          command: |
+            cd ulysse
+            chmod +x kaioken/clang-build.sh
+            bash kaioken/clang-build.sh -d $DEFCONFIG -p "/root/project/proton-clang/bin" -v $KAIOKEN_VERSION
+
+      - store_artifacts:
+          path: /root/project/upload
+          destination: kernel-build
+
+      - store_artifacts:
+          path: /root/project/ulysse/out/arch/arm64/boot
+          destination: kernel-images
+
+      - run:
+          name: Build Failed Notification
+          command: |
+            echo "Build Failed!"
+          when: on_fail
+
 workflows:
   version: 2.1
-  cooking:
+  build-kernel:
     jobs:
       - compile
-      
